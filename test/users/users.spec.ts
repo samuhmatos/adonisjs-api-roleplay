@@ -3,8 +3,11 @@ import { UserFactory } from 'Database/factories'
 import test from 'japa'
 import supertest from 'supertest'
 import Hash from '@ioc:Adonis/Core/Hash'
+import User from 'App/Models/User'
 
 const BASE_URL = `${process.env.HOST}:${process.env.PORT}`
+var token = ''
+var user = {} as User
 
 test.group('User', (group) => {
   group.beforeEach(async () => {
@@ -12,6 +15,22 @@ test.group('User', (group) => {
   })
   group.afterEach(async () => {
     await Database.rollbackGlobalTransaction()
+  })
+
+  group.before(async () => {
+    const plainPassword = 'test'
+    const newUser = await UserFactory.merge({ password: plainPassword }).create()
+
+    const { body } = await supertest(BASE_URL)
+      .post('/sessions')
+      .send({
+        email: newUser.email,
+        password: plainPassword,
+      })
+      .expect(201)
+
+    token = body.token.token
+    user = newUser
   })
 
   test('it should create an user', async (assert) => {
@@ -103,28 +122,28 @@ test.group('User', (group) => {
   })
 
   test('It should update an user', async (assert) => {
-    const { id, password } = await UserFactory.create()
     const email = 'test@test.com'
     const avatar = 'https://github.com/samuhmatos.png'
 
     const { body } = await supertest(BASE_URL)
-      .put(`/users/${id}`)
-      .send({ email, avatar, password })
+      .put(`/users/${user.id}`)
+      .send({ email, avatar, password: user.password })
+      .set('Authorization', `Bearer ${token}`)
       .expect(200)
 
     assert.exists(body.user, 'User undefined')
     assert.equal(body.user.email, email)
     assert.equal(body.user.avatar, avatar)
-    assert.equal(body.user.id, id)
+    assert.equal(body.user.id, user.id)
   })
 
   test("It should update the user's password", async (assert) => {
-    const user = await UserFactory.create()
     const password = 'test'
 
     const { body } = await supertest(BASE_URL)
       .put(`/users/${user.id}`)
       .send({ email: user.email, avatar: user.avatar, password })
+      .set('Authorization', `Bearer ${token}`)
       .expect(200)
 
     assert.exists(body.user, 'User undefined')
@@ -135,20 +154,21 @@ test.group('User', (group) => {
   })
 
   test('It should return 422 when required data is not provided', async (assert) => {
-    const { id } = await UserFactory.create()
-
-    const { body } = await supertest(BASE_URL).put(`/users/${id}`).send({}).expect(422)
+    const { body } = await supertest(BASE_URL)
+      .put(`/users/${user.id}`)
+      .send({})
+      .set('Authorization', `Bearer ${token}`)
+      .expect(422)
 
     assert.equal(body.code, 'BAD_REQUEST')
     assert.equal(body.status, 422)
   })
 
   test('It should return 422 when providing an invalid email', async (assert) => {
-    const { id, password, avatar } = await UserFactory.create()
-
     const { body } = await supertest(BASE_URL)
-      .put(`/users/${id}`)
-      .send({ password, avatar, email: 'test' })
+      .put(`/users/${user.id}`)
+      .send({ password: user.password, avatar: user.avatar, email: 'test' })
+      .set('Authorization', `Bearer ${token}`)
       .expect(422)
 
     assert.equal(body.code, 'BAD_REQUEST')
@@ -156,11 +176,10 @@ test.group('User', (group) => {
   })
 
   test('It should return 422 when providing an invalid password', async (assert) => {
-    const { id, email, avatar } = await UserFactory.create()
-
     const { body } = await supertest(BASE_URL)
-      .put(`/users/${id}`)
-      .send({ email, avatar, password: '123' })
+      .put(`/users/${user.id}`)
+      .send({ email: user.email, avatar: user.avatar, password: '123' })
+      .set('Authorization', `Bearer ${token}`)
       .expect(422)
 
     assert.equal(body.code, 'BAD_REQUEST')
@@ -168,11 +187,10 @@ test.group('User', (group) => {
   })
 
   test('It should return 422 when providing an invalid avatar', async (assert) => {
-    const { id, password, email } = await UserFactory.create()
-
     const { body } = await supertest(BASE_URL)
-      .put(`/users/${id}`)
-      .send({ password, email, avatar: 'naoUrl' })
+      .put(`/users/${user.id}`)
+      .send({ password: user.password, email: user.email, avatar: 'naoUrl' })
+      .set('Authorization', `Bearer ${token}`)
       .expect(422)
 
     assert.equal(body.code, 'BAD_REQUEST')
