@@ -152,4 +152,65 @@ test.group('Group Request', (group) => {
     assert.exists(body.code, 'BAD_REQUEST')
     assert.equal(body.status, 422)
   })
+
+  test('It should accept a group request', async (assert) => {
+    const master = await UserFactory.create()
+    const group = await GroupFactory.merge({ master: master.id }).create()
+
+    const response = await supertest(BASE_URL)
+      .post(`/groups/${group.id}/requests`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+
+    const { body } = await supertest(BASE_URL)
+      .post(`/groups/${group.id}/requests/${response.body.groupRequest.id}/accept`)
+      .send({})
+      .expect(200)
+
+    assert.exists(body.groupRequest, 'GroupRequest undefined')
+    assert.equal(body.groupRequest.userId, user.id)
+    assert.equal(body.groupRequest.groupId, group.id)
+    assert.equal(body.groupRequest.status, 'ACCEPTED')
+
+    await group.load('players')
+    assert.isNotEmpty(group.players)
+    assert.equal(group.players.length, 1)
+    assert.equal(group.players[0].id, user.id)
+  })
+
+  test('It should return 404 when providing an unexisting group', async (assert) => {
+    const master = await UserFactory.create()
+    const group = await GroupFactory.merge({ master: master.id }).create()
+
+    const response = await supertest(BASE_URL)
+      .post(`/groups/${group.id}/requests`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+
+    const { body } = await supertest(BASE_URL)
+      .post(`/groups/123/requests/${response.body.groupRequest.id}/accept`)
+      .send({})
+      .expect(404)
+
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 404)
+  })
+
+  test('It should return 404 when providing an unexisting group request', async (assert) => {
+    const master = await UserFactory.create()
+    const group = await GroupFactory.merge({ master: master.id }).create()
+
+    await supertest(BASE_URL)
+      .post(`/groups/${group.id}/requests`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+
+    const { body } = await supertest(BASE_URL)
+      .post(`/groups/${group.id}/requests/123/accept`)
+      .send({})
+      .expect(404)
+
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 404)
+  })
 })
