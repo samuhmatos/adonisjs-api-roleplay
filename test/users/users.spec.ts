@@ -33,6 +33,10 @@ test.group('User', (group) => {
     user = newUser
   })
 
+  group.after(async () => {
+    await supertest(BASE_URL).delete('/sessions').set('Authorization', `Bearer ${token}`).send({})
+  })
+
   test('it should create an user', async (assert) => {
     const userPayLoad = {
       email: 'test@test.com',
