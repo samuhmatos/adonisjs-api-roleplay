@@ -5,8 +5,24 @@ import CreateGroupValidator from 'App/Validators/CreateGroupValidator'
 
 export default class GroupsController {
   public async index({ request, response }: HttpContextContract) {
-    const groups = await Group.query().preload('players').preload('masterUser')
+    const { text, ['user']: userId } = request.qs()
+
+    const page = request.input('page', 1)
+    const perPage = request.input('perPage', 5)
+
+    // var groups = await this.filterByQueryString(userId, text)
+
+    var groupsQuery = this.filterByQueryString(userId, text)
+    const groups = await groupsQuery.paginate(page, perPage)
+
     return response.ok({ groups })
+  }
+
+  private filterByQueryString(userId: number, text: string) {
+    if (userId && text) return this.filterByUserAndText(userId, text)
+    else if (userId) return this.filterByUser(userId)
+    else if (text) return this.filterByText(text)
+    else return this.all()
   }
 
   public async store({ request, response, auth }: HttpContextContract) {
@@ -54,5 +70,31 @@ export default class GroupsController {
     //await group.related('players').detach()
 
     return response.ok({})
+  }
+
+  private all() {
+    return Group.query().preload('players').preload('masterUser')
+  }
+
+  private filterByUser(userId: number) {
+    return Group.query()
+      .preload('players')
+      .preload('masterUser')
+      .withScopes((scope) => scope.withPlayer(userId))
+  }
+
+  private filterByText(text: string) {
+    return Group.query()
+      .preload('players')
+      .preload('masterUser')
+      .withScopes((scope) => scope.withText(text))
+  }
+
+  private filterByUserAndText(userId: number, text: string) {
+    return Group.query()
+      .preload('players')
+      .preload('masterUser')
+      .withScopes((scope) => scope.withPlayer(userId))
+      .withScopes((scope) => scope.withText(text))
   }
 }
