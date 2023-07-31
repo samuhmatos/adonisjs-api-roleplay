@@ -1,4 +1,5 @@
 import Database from '@ioc:Adonis/Lucid/Database'
+import GroupRequest from 'App/Models/GroupRequest'
 import User from 'App/Models/User'
 import { GroupFactory, UserFactory } from 'Database/factories'
 import test from 'japa'
@@ -154,16 +155,15 @@ test.group('Group Request', (group) => {
   })
 
   test('It should accept a group request', async (assert) => {
-    const master = await UserFactory.create()
-    const group = await GroupFactory.merge({ master: master.id }).create()
+    const group = await GroupFactory.merge({ master: user.id }).create()
 
     const response = await supertest(BASE_URL)
       .post(`/groups/${group.id}/requests`)
       .set('Authorization', `Bearer ${token}`)
-      .send({})
 
     const { body } = await supertest(BASE_URL)
       .post(`/groups/${group.id}/requests/${response.body.groupRequest.id}/accept`)
+      .set('Authorization', `Bearer ${token}`)
       .send({})
       .expect(200)
 
@@ -179,8 +179,7 @@ test.group('Group Request', (group) => {
   })
 
   test('It should return 404 when providing an unexisting group', async (assert) => {
-    const master = await UserFactory.create()
-    const group = await GroupFactory.merge({ master: master.id }).create()
+    const group = await GroupFactory.merge({ master: user.id }).create()
 
     const response = await supertest(BASE_URL)
       .post(`/groups/${group.id}/requests`)
@@ -189,6 +188,7 @@ test.group('Group Request', (group) => {
 
     const { body } = await supertest(BASE_URL)
       .post(`/groups/123/requests/${response.body.groupRequest.id}/accept`)
+      .set('Authorization', `Bearer ${token}`)
       .send({})
       .expect(404)
 
@@ -197,8 +197,7 @@ test.group('Group Request', (group) => {
   })
 
   test('It should return 404 when providing an unexisting group request', async (assert) => {
-    const master = await UserFactory.create()
-    const group = await GroupFactory.merge({ master: master.id }).create()
+    const group = await GroupFactory.merge({ master: user.id }).create()
 
     await supertest(BASE_URL)
       .post(`/groups/${group.id}/requests`)
@@ -207,7 +206,59 @@ test.group('Group Request', (group) => {
 
     const { body } = await supertest(BASE_URL)
       .post(`/groups/${group.id}/requests/123/accept`)
+      .set('Authorization', `Bearer ${token}`)
       .send({})
+      .expect(404)
+
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 404)
+  })
+
+  test('It should reject a group request', async (assert) => {
+    const group = await GroupFactory.merge({ master: user.id }).create()
+
+    const response = await supertest(BASE_URL)
+      .post(`/groups/${group.id}/requests`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+
+    await supertest(BASE_URL)
+      .delete(`/groups/${group.id}/requests/${response.body.groupRequest.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+      .expect(200)
+
+    const groupRquest = await GroupRequest.find(response.body.groupRequest.id)
+    assert.isNull(groupRquest)
+  })
+
+  test('It should return 404 when providing an unexisting group for rejection', async (assert) => {
+    const group = await GroupFactory.merge({ master: user.id }).create()
+
+    const response = await supertest(BASE_URL)
+      .post(`/groups/${group.id}/requests`)
+      .set('Authorization', `Bearer ${token}`)
+
+    const { body } = await supertest(BASE_URL)
+      .delete(`/groups/123/requests/${response.body.groupRequest.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(404)
+
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 404)
+  })
+
+  test('It should return 404 when providing an unexisting group request for rejection', async (assert) => {
+    const group = await GroupFactory.merge({ master: user.id }).create()
+
+    const response = await supertest(BASE_URL)
+      .post(`/groups/${group.id}/requests`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+
+    const { body } = await supertest(BASE_URL)
+      .delete(`/groups/${group.id}/requests/123`)
+      .set('Authorization', `Bearer ${token}`)
       .expect(404)
 
     assert.equal(body.code, 'BAD_REQUEST')

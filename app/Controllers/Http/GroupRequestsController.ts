@@ -30,7 +30,7 @@ export default class GroupRequestsController {
     return response.ok({ groupRequest })
   }
 
-  public async index({ request, response, auth }: HttpContextContract) {
+  public async index({ request, response }: HttpContextContract) {
     const groupId = request.param('groupId') as number
     const { master } = request.qs()
 
@@ -52,7 +52,7 @@ export default class GroupRequestsController {
     return response.ok({ groupRequests })
   }
 
-  public async accept({ request, response, auth }: HttpContextContract) {
+  public async accept({ request, response, bouncer }: HttpContextContract) {
     const requestId = request.param('requestId') as number
     const groupId = request.param('groupId') as number
 
@@ -61,11 +61,30 @@ export default class GroupRequestsController {
       .andWhere('groupId', groupId)
       .firstOrFail()
 
+    await groupRequest.load('group')
+    await bouncer.authorize('acceptGroupRequest', groupRequest)
+
     const updatedGroupRequest = await groupRequest.merge({ status: 'ACCEPTED' }).save()
 
     await groupRequest.load('group')
     await groupRequest.group.related('players').attach([groupRequest.userId])
 
     return response.ok({ groupRequest: updatedGroupRequest })
+  }
+
+  public async destroy({ request, response, bouncer }: HttpContextContract) {
+    const requestId = request.param('requestId') as number
+    const groupId = request.param('groupId') as number
+
+    const groupRequest = await GroupRequest.query()
+      .where('id', requestId)
+      .andWhere('groupId', groupId)
+      .firstOrFail()
+
+    await groupRequest.load('group')
+    await bouncer.authorize('rejectGroupRequest', groupRequest)
+
+    await groupRequest.delete()
+    return response.ok({})
   }
 }
