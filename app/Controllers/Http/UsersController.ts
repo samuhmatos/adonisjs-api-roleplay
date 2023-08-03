@@ -4,13 +4,6 @@ import User from 'App/Models/User'
 import CreateUserValidator from 'App/Validators/CreateUserValidator'
 import UpdateUserValidator from 'App/Validators/UpdateUserValidator'
 
-interface UserRequest {
-  email: string
-  username: string
-  password: string
-  avatar: string
-}
-
 export default class UsersController {
   public async store({ response, request }: HttpContextContract) {
     const userPayload = await request.validate(CreateUserValidator)

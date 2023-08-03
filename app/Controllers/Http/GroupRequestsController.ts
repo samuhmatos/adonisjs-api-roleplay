@@ -31,7 +31,6 @@ export default class GroupRequestsController {
   }
 
   public async index({ request, response }: HttpContextContract) {
-    const groupId = request.param('groupId') as number
     const { master } = request.qs()
 
     if (!master) throw new BadRequestException('Master query should be provided', 422)

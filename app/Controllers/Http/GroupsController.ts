@@ -25,7 +25,7 @@ export default class GroupsController {
     else return this.all()
   }
 
-  public async store({ request, response, auth }: HttpContextContract) {
+  public async store({ request, response }: HttpContextContract) {
     const groupPayload = await request.validate(CreateGroupValidator)
     const group = await Group.create(groupPayload)
 

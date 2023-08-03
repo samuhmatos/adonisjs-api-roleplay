@@ -102,8 +102,6 @@ test.group('Group', (group) => {
   })
 
   test('It should return 422 when providing an unexisting group for update', async (assert) => {
-    const master = await UserFactory.create()
-
     const groupPayload = {
       name: 'test',
       description: 'test description',
@@ -195,7 +193,7 @@ test.group('Group', (group) => {
 
     const group = body.group
 
-    const response = await supertest(BASE_URL)
+    await supertest(BASE_URL)
       .delete(`/groups/${group.id}`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200)

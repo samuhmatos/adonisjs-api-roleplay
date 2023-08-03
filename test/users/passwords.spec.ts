@@ -32,7 +32,7 @@ test.group('Passwords', (group) => {
       assert.include(message.html!, username)
     })
 
-    const { body } = await supertest(BASE_URL)
+    await supertest(BASE_URL)
       .post('/forgot-password')
       .send({
         email,

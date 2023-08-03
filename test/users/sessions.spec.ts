@@ -64,7 +64,7 @@ test.group('Session', (group) => {
     assert.equal(body.code, 'BAD_REQUEST')
     assert.equal(body.message, 'invalid credentials')
   })
-  test('it should return 200 when user signs out', async (assert) => {
+  test('it should return 200 when user signs out', async () => {
     const plainPassword = 'test'
     const user = await UserFactory.merge({ password: plainPassword }).create()
 

@@ -251,7 +251,7 @@ test.group('Group Request', (group) => {
   test('It should return 404 when providing an unexisting group request for rejection', async (assert) => {
     const group = await GroupFactory.merge({ master: user.id }).create()
 
-    const response = await supertest(BASE_URL)
+    await supertest(BASE_URL)
       .post(`/groups/${group.id}/requests`)
       .set('Authorization', `Bearer ${token}`)
       .send({})
